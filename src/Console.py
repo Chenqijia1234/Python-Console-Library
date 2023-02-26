@@ -28,20 +28,35 @@ SOFTWARE.
 CodeRender控件90%的代码都来自此作品！！！
 
 以后将会补充一些常用控件，例如选择框，进度条。
-尽可能保证跨平台。
+
+吴宇航设想的开发目标原文引用如下：
+
+相当不错。对了，我之前有过一个很精妙的终端库的设计，已经达到了正交的地步，具体如下：
+有三个核心部分，Style、Component、Event，Style是样式，负责表达渲染在终端的颜色等；Component是组件，负责表达终端的组成（比如一个选择框、一块文本都是一个组件）等；Event是事件，负责用户的鼠标点击、输入等动作。
+而一个Component可以有多种Style和多个Event，Component可以拥有若干子组件，子组件又可以拥有子组件，就这样很多组件以父子关系和并列关系组合在一起，就构成了整个终端，最大的一个Component是Screen，所有Component都渲染在Screen上面。
+打个比方，Style就是CSS，Component就是HTML，Event就是JS，三者合起来就可以组成一个网页
+
+另将一些评论附上：
+“我是浅梦，小号，既然你说要对标PSUIL了，那我还是说两句
+1.关于对标我没什么兴趣，PSUIL也不会有什么大更新，PSUIL的所有功能都是为Subsist发展服务的，所以你超过也很正常
+2.我认为对于语法高亮，以下你说的优点我并没有什么想评价的，毕竟原创率不高，其他就有些强词夺理了
+3.PSUIL的可拓展性和跨平台都是很强的，PSUIL也超过目前这个项目，至少从现在来讲，不管是功能强大”
+
 """
 
 __auther__ = "鱼翔浅底"
-__website__ = None
+__website__ = "https://github.com/Chenqijia1234/Python-Console-Library"
 
+import time
 import datetime
 import enum
 import keyword
 import platform
 import sys
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Optional, Union
 
-NUMBER, BUILTIN, KEYWORD, STRING, OTHER = "NUMBER", "BUILTIN", "KEYWORD", "STRING", "OTHER"  # 用于Python词法分析的常量
+# 用于Python词法分析的常量
+NUMBER, BUILTIN, KEYWORD, STRING, OTHER = "NUMBER", "BUILTIN", "KEYWORD", "STRING", "OTHER"
 
 builtins_list = dir(__builtins__)  # 内置函数
 keywords = keyword.kwlist  # 关键字
@@ -55,7 +70,8 @@ class Platform(enum.Enum):
     Other = 1
 
 
-platform = Platform.Windows if platform.platform().lower().startswith("windows") else Platform.Other  # 当前平台
+platform = Platform.Windows if platform.platform().lower(
+).startswith("windows") else Platform.Other  # 当前平台
 
 # 常用的键码对照表
 ConsoleKeys: dict = {
@@ -122,7 +138,7 @@ ConsoleKeys: dict = {
 }
 
 
-class ConsoleColor(enum.Enum):
+class KConsoleColor(enum.Enum):
     """
     枚举，表示终端颜色
     """
@@ -134,10 +150,9 @@ class ConsoleColor(enum.Enum):
     Purple = 5
     Cyan = 6
     White = 7
-    Default = 8
 
 
-class ConsoleKeyInfo(object):
+class KConsoleKeyInfo(object):
     """
     键盘事件类
     """
@@ -172,34 +187,37 @@ class ConsoleKeyInfo(object):
             return other.__key_down == self.__key_down
 
 
-class Console(object):
-    class __ColorType(enum.Enum):
-        """
-        枚举，用于辅助表示ConsoleColor的用途。开发者不应使用
-        """
-        ForegroundColor = 0
-        BackgroundColor = 1
+class KColorType(enum.Enum):
+    """
+    枚举，用于辅助表示ConsoleColor的用途。开发者不应使用
+    """
+    ForegroundColor = 0
+    BackgroundColor = 1
 
-    __fg_color_map = {
-        ConsoleColor.Black: "\033[30m",
-        ConsoleColor.Red: "\033[31m",
-        ConsoleColor.Green: "\033[32m",
-        ConsoleColor.Yellow: "\033[33m",
-        ConsoleColor.Blue: "\033[34m",
-        ConsoleColor.Purple: "\033[35m",
-        ConsoleColor.Cyan: "\033[36m",
-        ConsoleColor.White: "\033[37m"
-    }
-    __bg_color_map = {
-        ConsoleColor.Black: "\033[40m",
-        ConsoleColor.Red: "\033[41m",
-        ConsoleColor.Green: "\033[42m",
-        ConsoleColor.Yellow: "\033[43m",
-        ConsoleColor.Blue: "\033[44m",
-        ConsoleColor.Purple: "\033[45m",
-        ConsoleColor.Cyan: "\033[46m",
-        ConsoleColor.White: "\033[47m"
-    }
+
+fg_color_map = {
+    KConsoleColor.Black: "\033[30m",
+    KConsoleColor.Red: "\033[31m",
+    KConsoleColor.Green: "\033[32m",
+    KConsoleColor.Yellow: "\033[33m",
+    KConsoleColor.Blue: "\033[34m",
+    KConsoleColor.Purple: "\033[35m",
+    KConsoleColor.Cyan: "\033[36m",
+    KConsoleColor.White: "\033[37m"
+}
+bg_color_map = {
+    KConsoleColor.Black: "\033[40m",
+    KConsoleColor.Red: "\033[41m",
+    KConsoleColor.Green: "\033[42m",
+    KConsoleColor.Yellow: "\033[43m",
+    KConsoleColor.Blue: "\033[44m",
+    KConsoleColor.Purple: "\033[45m",
+    KConsoleColor.Cyan: "\033[46m",
+    KConsoleColor.White: "\033[47m"
+}
+
+
+class KConsole(object):
 
     def __init__(self, _out=sys.stdout, _in=sys.stdin) -> None:
         """
@@ -246,14 +264,14 @@ class Console(object):
         """
         return self._in.read(1)
 
-    def read_key(self) -> ConsoleKeyInfo:
+    def read_key(self) -> KConsoleKeyInfo:
         """
         从标准输入流读入键盘事件。重定向输入流对此函数无效。
         :return: 键盘事件
         """
         if platform == Platform.Windows:
             import msvcrt
-            return ConsoleKeyInfo(ord(msvcrt.getch()), datetime.datetime.now())
+            return KConsoleKeyInfo(ord(msvcrt.getch()), datetime.datetime.now())
         else:
             import termios
             fd = sys.stdin.fileno()  # 获取标准输入的描述符
@@ -268,7 +286,7 @@ class Console(object):
 
             termios.tcsetattr(fd, termios.TCSANOW, old_tty_info)  # 恢复设置
 
-            return ConsoleKeyInfo(ord(res), datetime.datetime.now())
+            return KConsoleKeyInfo(ord(res), datetime.datetime.now())
 
     def read_line(self) -> str:
         """
@@ -292,25 +310,21 @@ class Console(object):
         """
         self._out.write("\033[0m")
 
-    def set_bg_color(self, color: ConsoleColor) -> None:
+    def set_bg_color(self, color) -> None:
         """
         设置背景颜色
         :param color: 颜色
         :return: 无返回值
         """
-        if color == ConsoleColor.Default:
-            self.reset_style()
-        self._out.write(Console.__render(color, Console.__ColorType.BackgroundColor))
+        self._out.write(color.render(KColorType.BackgroundColor))
 
-    def set_fg_color(self, color: ConsoleColor) -> None:
+    def set_fg_color(self, color) -> None:
         """
         设置前景颜色
         :param color:颜色
         :return: 无返回值
         """
-        if color == ConsoleColor.Default:
-            self.reset_style()
-        self._out.write(Console.__render(color, Console.__ColorType.ForegroundColor))
+        self._out.write(color.render(KColorType.ForegroundColor))
 
     def __del__(self):
         """
@@ -319,21 +333,30 @@ class Console(object):
         """
         self.reset_style()
 
-    @classmethod
-    def __render(cls, color: ConsoleColor, _type: __ColorType) -> str:
-        """
-        渲染ANSI转义序列。开发者不应当使用
-        :param color: 颜色
-        :param _type: 颜色类型/用途
-        :return: 渲染后的字符串
-        """
-        if _type == cls.__ColorType.BackgroundColor:
-            return cls.__bg_color_map.get(color, "")
+
+class KColor(object):
+    def __init__(self, color: Union[KConsoleColor, str]) -> None:
+        self.color = color
+
+    def render(self, _type: KColorType) -> str:   # type: ignore
+        if isinstance(self.color, str):
+            r, g, b = self.__parse_rgb(self.color)
+            if _type == KColorType.BackgroundColor:
+                return f"\033[48;2;{r};{g};{b}m"
+            else:
+                return f"\033[38;2;{r};{g};{b}m"
         else:
-            return cls.__fg_color_map.get(color, "")
+            if _type == KColorType.BackgroundColor:
+                return bg_color_map[self.color]
+            else:
+                return fg_color_map[self.color]
+
+    def __parse_rgb(self, _str: str) -> Any:
+        for char in _str[1:].split(";"):
+            yield int(char)
 
 
-class CodeRender(object):
+class KCodeRender(object):
     """
     感谢吴宇航！！！
     """
@@ -369,7 +392,7 @@ class CodeRender(object):
                     while self.char.isdigit() or self.char == ".":
                         res += self.char
                         self.advance()
-                    return CodeRender.Token(NUMBER, res)
+                    return KCodeRender.Token(NUMBER, res)
                 elif self.char == '"' or self.char == "'":
                     quot = self.char
                     self.advance()
@@ -379,22 +402,22 @@ class CodeRender(object):
                         self.advance()
                     self.advance()
                     res += quot
-                    return CodeRender.Token(STRING, res)
+                    return KCodeRender.Token(STRING, res)
                 elif self.char.isalpha():
                     res = ""
                     while self.char.isalnum():
                         res += self.char
                         self.advance()
                     if res in builtins_list:
-                        return CodeRender.Token(BUILTIN, res)
+                        return KCodeRender.Token(BUILTIN, res)
                     elif res in keywords:
-                        return CodeRender.Token(KEYWORD, res)
+                        return KCodeRender.Token(KEYWORD, res)
                     else:
-                        return CodeRender.Token(OTHER, res)
+                        return KCodeRender.Token(OTHER, res)
                 else:
                     char = self.char
                     self.advance()
-                    return CodeRender.Token(OTHER, char)
+                    return KCodeRender.Token(OTHER, char)
 
         def tokens(self):
             ret = []
@@ -403,25 +426,25 @@ class CodeRender(object):
             return ret
 
     colortable = {
-        NUMBER: ConsoleColor.Blue,
-        STRING: ConsoleColor.Green,
-        BUILTIN: ConsoleColor.White,
-        KEYWORD: ConsoleColor.Purple,
-        OTHER: ConsoleColor.White
+        NUMBER: KColor(KConsoleColor.Blue),
+        STRING: KColor(KConsoleColor.Green),
+        BUILTIN: KColor(KConsoleColor.White),
+        KEYWORD: KColor(KConsoleColor.Purple),
+        OTHER: KColor(KConsoleColor.White)
     }
 
-    def __init__(self, code: str, _console: Console) -> None:
+    def __init__(self, code: str, _console: KConsole) -> None:
         self.console = _console
         self.code = code
-        self.__tokens = CodeRender.Scanner(self.code).tokens()
+        self.__tokens = KCodeRender.Scanner(self.code).tokens()
         self.__color()
 
     def __color(self):
         for token in self.__tokens:
-            token.color = CodeRender.colortable[token.tp]
+            token.color = KCodeRender.colortable[token.tp]
 
     def output(self):
-        console.reset_style()
+        self.console.reset_style()
         for token in self.__tokens:
             if token.value:
                 self.console.set_fg_color(token.color)
@@ -429,18 +452,18 @@ class CodeRender(object):
                 self.console.reset_style()
 
     @classmethod
-    def Output(cls, code: str, _console: Console) -> None:
-        CodeRender(code, _console).output()
+    def Output(cls, code: str, _console: KConsole) -> None:
+        KCodeRender(code, _console).output()
 
 
-class ChoiceScreen(object):
+class KChoiceScreen(object):
     def __init__(
             self,
             title: str,
             choices: list,
-            _console: Console,
-            info: Optional[str],
-            _current_option_color=ConsoleColor.Green,
+            _console: KConsole,
+            info: Optional[dict],
+            _current_option_color=KColor(KConsoleColor.Green),
             _enter_key=ConsoleKeys["Enter"]
     ) -> None:
         """
@@ -504,31 +527,42 @@ class ChoiceScreen(object):
             self._console.reset_style()
 
 
-def pause(_console: Console, tip: str = "按任意键继续>>>") -> None:
+class KProcessBar(object):
+    def __init__(self, _console: KConsole, _steps: int, width: int = 15) -> None:
+        self.__steps = _steps
+        assert self.__steps > 0
+        self.current_step = 0
+        self._console = _console
+
+    def next_step(self) -> None:
+        self.current_step += 1
+        self.show()
+
+    def finish(self)->None:
+        self.current_step = self.__steps
+        self.show()
+
+    def show(self) -> None:
+        self._console.write("[")
+        self._console.set_bg_color(KColor(KConsoleColor.White))
+        self._console.write(f"{self.current_step * ' '}")
+        self._console.set_bg_color(KColor(KConsoleColor.Black))
+        self._console.write(f"{(self.__steps-self.current_step) * ' '}")
+        self._console.reset_style()
+        self._console.write(f"]{int((self.current_step/self.__steps)*100)}%")
+
+
+def KPause(_console: KConsole, tip: str = "按任意键继续>>>") -> None:
     _console.write(tip)
     _console.read_key()
+    
+    
+def show_process_bar(_console,steps:int = 10,sleep:float = 0.2):
+    bar = KProcessBar(_console,steps)
+    bar.show()
+    for i in range(steps):
+        time.sleep(sleep)
+        _console.clear()
+        bar.next_step()
 
 
-if __name__ == "__main__":
-    console = Console()
-    index = ChoiceScreen(
-        "hello",
-        [
-            "显示代码",
-            "退出"
-        ],
-        console,
-        None
-    ).show()
-    if index == 0:
-        console.clear()
-        CodeRender.Output(
-            """
-import os,sys
-print("hello world")
-            """,
-            console
-        )
-    else:
-        console.write_line("")
-        pause(console)
